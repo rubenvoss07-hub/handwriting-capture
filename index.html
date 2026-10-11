@@ -1,0 +1,1045 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Handschrift">
+<meta name="theme-color" content="#16120f">
+<title>Handschrift sammeln</title>
+<style>
+/* Direction: night desk. Warm near-black paper, warm greige type, one burnt-orange ink
+   (the same #E67300 Ruben writes with in GoodNotes). Iowan serif for the sentence to copy,
+   the system sans for controls. Signature token: --grain, a faint paper tooth on the sheet. */
+:root{
+  --surface:#16120f; --surface-2:#1e1915; --surface-3:#29221d;
+  --text:#efe7dd; --text-2:#b9ac9e; --text-3:#968878;
+  --rule:#3b322b; --rule-base:#66554a;
+  --accent:#e67300; --accent-press:#c45f00; --on-accent:#1a0e04;
+  --danger:#ef7a62;
+  --r-sm:6px; --r-lg:14px;
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px; --s7:48px;
+  --fast:100ms; --std:180ms; --ease:cubic-bezier(.2,.7,.2,1);
+  --lift:0 .5px 1px rgba(8,5,2,.55),0 2px 6px rgba(8,5,2,.35),0 10px 24px rgba(8,5,2,.28);
+  --grain:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 .9 0 0 0 0 .8 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+  --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--surface);color:var(--text);
+  font:16px/1.5 var(--sans);-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
+  -webkit-text-size-adjust:100%;overscroll-behavior:none}
+body{position:fixed;inset:0}
+button,input{font:inherit;color:inherit}
+button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.app{height:100%;display:flex;flex-direction:column;
+  padding:max(var(--s4),env(safe-area-inset-top)) max(var(--s5),env(safe-area-inset-right)) max(var(--s4),env(safe-area-inset-bottom)) max(var(--s5),env(safe-area-inset-left))}
+
+/* top bar */
+.bar{display:flex;align-items:center;gap:var(--s4);min-height:44px}
+.progress{display:flex;align-items:baseline;gap:var(--s2);font-family:var(--mono);font-variant-numeric:tabular-nums}
+.progress b{font-weight:600;font-size:20px}
+.progress span{color:var(--text-3);font-size:14px}
+.meter{flex:1;max-width:220px;height:3px;background:var(--surface-3);border-radius:2px;overflow:hidden}
+.meter i{display:block;height:100%;width:0;background:var(--accent);transition:width var(--std) var(--ease)}
+.spacer{flex:1}
+.toggle{display:flex;align-items:center;gap:var(--s3);height:44px;padding:0 var(--s2);cursor:pointer;color:var(--text-2)}
+.toggle input{position:absolute;opacity:0;pointer-events:none}
+.toggle .track{width:44px;height:26px;border-radius:13px;background:var(--surface-3);position:relative;
+  transition:background var(--std) var(--ease)}
+.toggle .track::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;
+  background:var(--text-2);transition:transform var(--std) var(--ease),background var(--std) var(--ease)}
+.toggle input:checked + .track{background:var(--accent)}
+.toggle input:checked + .track::after{transform:translateX(18px);background:var(--on-accent)}
+.toggle input:focus-visible + .track{outline:2px solid var(--text);outline-offset:2px}
+.ghost{height:44px;padding:0 var(--s4);border:0;border-radius:var(--r-sm);background:transparent;color:var(--text-2);cursor:pointer;
+  transition:background var(--fast) var(--ease),color var(--fast) var(--ease)}
+.ghost:hover{background:var(--surface-2);color:var(--text)}
+.ghost:active{background:var(--surface-3)}
+.ghost:focus-visible{outline:2px solid var(--text);outline-offset:1px}
+.ghost[aria-expanded="true"]{background:var(--surface-2);color:var(--text)}
+.badge{display:inline-block;min-width:22px;margin-left:var(--s2);padding:0 6px;border-radius:11px;background:var(--accent);
+  color:var(--on-accent);font:600 13px/22px var(--mono);text-align:center}
+.badge:empty{display:none}
+
+/* settings panel */
+.panel{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s3) var(--s6);margin-top:var(--s3);padding:var(--s4) var(--s5);
+  background:var(--surface-2);border-radius:var(--r-lg);color:var(--text-2);font-size:15px}
+.panel[hidden]{display:none}
+.panel label{display:flex;align-items:center;gap:var(--s3)}
+.panel input[type=range]{width:220px;accent-color:var(--accent)}
+.panel output{font-family:var(--mono);color:var(--text);min-width:5ch}
+.panel .note{flex-basis:100%;margin:0;color:var(--text-3);font-size:14px}
+
+/* the sentence and the sheet */
+.work{flex:1;display:flex;flex-direction:column;justify-content:center;min-height:0;padding-bottom:6vh}
+.eyebrow{margin:0 0 var(--s2);font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3)}
+.eyebrow .fix{color:var(--accent)}
+h1{margin:0;font:400 31px/1.25 var(--serif);letter-spacing:0;color:var(--text)}
+.link{margin:var(--s2) 0 0 calc(-1 * var(--s2));height:36px;padding:0 var(--s2);border:0;background:none;color:var(--text-3);
+  font-size:15px;cursor:pointer;border-radius:var(--r-sm)}
+.link:hover,.link:active{color:var(--text)}
+.link:focus-visible{outline:2px solid var(--text)}
+.sheet{position:relative;margin-top:var(--s5);border-radius:var(--r-lg);background:var(--surface-2) var(--grain);box-shadow:var(--lift)}
+canvas{display:block;width:100%;touch-action:none;cursor:crosshair}
+.hint{position:absolute;right:var(--s2);top:100%;margin:var(--s2) 0 0;font-size:14px;color:var(--text-3);pointer-events:none;
+  transition:opacity var(--std) var(--ease)}
+.hint.warn{color:var(--danger)}
+.done{display:none;margin-top:var(--s5);color:var(--text-2);max-width:62ch}
+.done p{margin:0 0 var(--s4)}
+
+/* actions */
+.actions{display:flex;align-items:center;gap:var(--s2);margin-top:var(--s5)}
+.actions .primary{margin-left:auto}
+.btn{height:52px;padding:0 var(--s5);border:0;border-radius:var(--r-sm);background:var(--surface-2);color:var(--text);cursor:pointer;
+  transition:transform var(--fast) var(--ease),box-shadow var(--fast) var(--ease),background var(--fast) var(--ease)}
+.btn:hover{background:var(--surface-3)}
+.btn:active{transform:scale(.98);transition-duration:60ms}
+.btn:focus-visible{outline:2px solid var(--text);outline-offset:2px}
+.btn:disabled{opacity:.4;cursor:default;transform:none}
+.btn.primary{padding:0 var(--s6);background:var(--accent);color:var(--on-accent);font-weight:600;box-shadow:var(--lift)}
+.btn.primary:hover{background:#f07e0e;transform:translateY(-1px)}
+.btn.primary:active{background:var(--accent-press);transform:scale(.98)}
+.btn.quiet{background:transparent;color:var(--text-2)}
+.btn.quiet:hover{background:var(--surface-2);color:var(--text)}
+
+.toast{position:fixed;left:50%;bottom:calc(var(--s7) + env(safe-area-inset-bottom));transform:translate(-50%,12px);opacity:0;
+  padding:var(--s3) var(--s5);border-radius:var(--r-sm);background:var(--surface-3);color:var(--text);box-shadow:var(--lift);
+  pointer-events:none;transition:opacity var(--std) var(--ease),transform var(--std) var(--ease);max-width:min(90vw,560px)}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.toast.bad{color:var(--danger)}
+
+body.finished .sheet,body.finished .actions .hide-done,body.finished #editBtn{display:none}
+body.finished .done{display:block}
+@media (max-width:760px){h1{font-size:25px}.btn{padding:0 var(--s4)}.meter{display:none}}
+</style>
+</head>
+<body>
+<main class="app">
+  <header class="bar">
+    <div class="progress" aria-live="polite"><b id="count">0</b><span id="total">/ 0</span></div>
+    <div class="meter" aria-hidden="true"><i id="meter"></i></div>
+    <div class="spacer"></div>
+    <label class="toggle"><input type="checkbox" id="penOnly"><span class="track"></span>Nur Stift</label>
+    <button class="ghost" id="settingsBtn" aria-expanded="false" aria-controls="panel">Einstellungen</button>
+    <button class="ghost" id="exportBtn">Exportieren<span class="badge" id="badge"></span></button>
+  </header>
+
+  <div class="panel" id="panel" hidden>
+    <label>Linienabstand <input type="range" id="gap" min="24" max="72" step="1"><output id="gapOut"></output></label>
+    <button class="ghost" id="importBtn">Backup einlesen</button>
+    <input type="file" id="importFile" accept="application/json,.json" hidden>
+    <p class="note" id="panelNote">Stell den Abstand so ein, dass du so groß schreibst wie in GoodNotes. Gilt ab der nächsten leeren Zeile.</p>
+  </div>
+
+  <section class="work">
+    <p class="eyebrow" id="eyebrow"></p>
+    <h1 id="promptText"></h1>
+    <div><button class="link" id="editBtn">Anders geschrieben? Text anpassen</button></div>
+    <div class="sheet" id="sheet">
+      <canvas id="pad"></canvas>
+      <p class="hint" id="hint"></p>
+    </div>
+    <div class="done" id="done">
+      <p id="doneText"></p>
+      <button class="btn" id="redoSkipped">Übersprungene nachholen</button>
+    </div>
+  </section>
+
+  <footer class="actions">
+    <button class="btn quiet" id="prevBtn">Zurück</button>
+    <button class="btn hide-done" id="undoBtn">Strich zurück</button>
+    <button class="btn hide-done" id="clearBtn">Zeile löschen</button>
+    <button class="btn quiet hide-done" id="skipBtn">Überspringen</button>
+    <button class="btn primary hide-done" id="nextBtn">Speichern &amp; weiter</button>
+  </footer>
+</main>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+'use strict';
+const APP_VERSION = 1;
+
+// Sentences to copy. APPEND-ONLY: a saved line's id is its index in this list.
+// Mostly German (Ruben's everyday and school writing, lots of ä ö ü ß, which the
+// English pretraining set lacks), some English, plus numbers, dates and formulas.
+const PROMPTS = [
+  'Mäxchens Vögel aßen Rüben, Joghurt und Quark.',
+  '„Fix, Schwyz!“, quäkt Jürgen blöd vom Pass.',
+  'Sokrates sprach, Xanthippe rief: Quatsch!',
+  'Jakob zürnt schweißgequält vom öden Text.',
+  'Franz jagt im verwahrlosten Taxi durch Bayern.',
+  'The quick brown fox jumps over the lazy dog.',
+  'Zwölf Boxkämpfer jagen Viktor über den Deich.',
+  'Heute ist Montag, der 12. Oktober 2026.',
+  'Wir schreiben morgen eine Mathearbeit.',
+  'Sphinx of black quartz, judge my vow.',
+  'Die Photosynthese läuft im Chloroplasten ab.',
+  'Aus CO2 und Wasser entsteht Glucose.',
+  'Löse die Gleichung 3x + 7 = 22 nach x auf.',
+  'Also ist x = 5, denn 3 · 5 + 7 = 22.',
+  'Die Französische Revolution begann 1789.',
+  'Am 9. November 1989 fiel die Berliner Mauer.',
+  'How vexingly quick daft zebras jump!',
+  'Kannst du mir bitte das Salz geben?',
+  'Wir treffen uns um 15:30 Uhr vor der Schule.',
+  'Vergiss nicht, die Fenster zu schließen!',
+  'Wo habe ich nur meinen Schlüssel hingelegt?',
+  'Gregor Mendel kreuzte Erbsen im Klostergarten.',
+  'Die DNA besteht aus vier verschiedenen Basen.',
+  'Adenin paart sich immer mit Thymin.',
+  'Mitochondrien sind die Kraftwerke der Zelle.',
+  'The five boxing wizards jump quickly.',
+  'Licht ist eine elektromagnetische Welle.',
+  'Der Widerstand wird in Ohm gemessen: R = U / I',
+  'Wasser siedet bei 100 °C auf Meereshöhe.',
+  'Der Satz des Pythagoras: a² + b² = c²',
+  'Die Fläche eines Kreises ist A = π · r².',
+  'Prozentrechnung: 25 % von 80 sind 20.',
+  'Der Bruch 3/4 entspricht genau 0,75.',
+  'Jackdaws love my big sphinx of quartz.',
+  'Oma backt jeden Sonntag einen Apfelkuchen.',
+  'Zum Frühstück gibt es Müsli mit Joghurt.',
+  'Der Bus kommt heute zwölf Minuten zu spät.',
+  'Im Sommer fahren wir an die Ostsee.',
+  'Ich muss noch Milch, Eier und Brot kaufen.',
+  'Das kostet im Angebot nur 4,99 €.',
+  'Herzlichen Glückwunsch zum Geburtstag!',
+  'Pack my box with five dozen liquor jugs.',
+  'Goethe schrieb den Faust in zwei Teilen.',
+  'Ein Gedicht besteht aus Strophen und Versen.',
+  'Konjunktiv II: Ich wäre jetzt gern am Meer.',
+  'Nach „weil“ steht das Verb am Ende.',
+  'Die Würde des Menschen ist unantastbar.',
+  'Das Grundgesetz trat am 23. Mai 1949 in Kraft.',
+  'Der Bundestag wählt den Bundeskanzler.',
+  'Angebot und Nachfrage bestimmen den Preis.',
+  'Quer über die Wiese hüpft ein kleiner Hase.',
+  'Ein Fuchs schleicht nachts durch den Garten.',
+  'The early bird catches the worm.',
+  'Im Herbst färben sich die Blätter gelb.',
+  'Es schneit, und alle Straßen sind glatt.',
+  'Über den Bergen zieht ein Unwetter auf.',
+  'Die Sonne geht heute um 18:52 Uhr unter.',
+  'Jupiter ist der größte Planet im Sonnensystem.',
+  'Merkur liegt der Sonne am nächsten.',
+  'Der Mond umkreist die Erde in etwa 27 Tagen.',
+  'Ein Dreieck hat eine Winkelsumme von 180°.',
+  'f(x) = 2x − 4 schneidet die x-Achse bei 2.',
+  'Primzahlen: 2, 3, 5, 7, 11, 13, 17, 19',
+  'Hausaufgaben: S. 47, Nr. 3a bis 3d',
+  'Bitte bis Freitag den Aufsatz abgeben!',
+  'Can you meet me at the station at 7:45?',
+  'Protonen sind positiv, Elektronen negativ.',
+  'Neutronen haben keine elektrische Ladung.',
+  'Eis schmilzt schon bei 0 °C.',
+  'Enzyme senken die Aktivierungsenergie.',
+  'Ein Atom besteht aus Kern und Hülle.',
+  'Napoleon wurde 1804 zum Kaiser gekrönt.',
+  'Die Weimarer Republik endete im Jahr 1933.',
+  'Schiller und Goethe waren eng befreundet.',
+  'Der Erzähler weiß mehr als die Figuren.',
+  'Das Passiv bildet man mit „werden“.',
+  'I think we should leave before it rains.',
+  'Die Hauptstadt von Frankreich ist Paris.',
+  'Der Rhein fließt bei Rotterdam in die Nordsee.',
+  'Die Zugspitze ist 2962 Meter hoch.',
+  'Hamburg hat den größten Hafen Deutschlands.',
+  'Bayern ist das flächengrößte Bundesland.',
+  'Die Alpen trennen Nord- und Südeuropa.',
+  'Am Äquator ist es das ganze Jahr warm.',
+  'Regenwälder speichern sehr viel CO2.',
+  'Der Klimawandel lässt die Gletscher schmelzen.',
+  'Ich hole dich um halb acht am Bahnhof ab.',
+  'Mein Handy-Akku ist schon wieder leer.',
+  'Das Wetter soll am Wochenende schön werden.',
+  'She sells sea shells by the sea shore.',
+  'Draußen regnet es seit drei Stunden.',
+  'Morgen früh fahren wir nach Österreich.',
+  'Unsere Katze schläft am liebsten auf dem Sofa.',
+  'Der Hund bellt, sobald es an der Tür klingelt.',
+  'Ich trinke meinen Tee ohne Zucker.',
+  'Die Bäckerei öffnet schon um sechs Uhr.',
+  'Am Wochenende spiele ich Fußball im Verein.',
+  'Wir haben das Spiel mit 3:1 gewonnen!',
+  'Das Konzert war unglaublich laut und gut.',
+  'Ruf mich an, wenn du zu Hause bist.',
+  'My favourite subject at school is physics.',
+  'Vielen Dank für deine schnelle Antwort.',
+  'Liebe Grüße aus dem verschneiten Allgäu',
+  'Sehr geehrte Frau Müller,',
+  'Mit freundlichen Grüßen',
+  'Bis bald und pass gut auf dich auf!',
+  'Ich freue mich schon auf die Ferien.',
+  'Der Zug nach München fährt von Gleis 7.',
+  'Die Äpfel am Baum sind endlich reif.',
+  'Der Fluss war nach dem Gewitter sehr hoch.',
+  'Quadratische Funktion: f(x) = x² − 6x + 9',
+  'Der Scheitelpunkt liegt bei S(3|0).',
+  'Water boils at 100 degrees Celsius.',
+  'Die Ableitung von x³ ist 3x².',
+  'Ein Liter Wasser wiegt ungefähr 1 kg.',
+  'Die Dichte ist Masse durch Volumen: ρ = m/V',
+  'Kraft ist Masse mal Beschleunigung: F = m · a',
+  'Die Erdbeschleunigung beträgt 9,81 m/s².',
+  'Energie geht nie verloren.',
+  'Schall breitet sich mit 343 m/s aus.',
+  'Strom fließt vom Pluspol zum Minuspol.',
+  'Kupfer leitet Strom besser als Eisen.',
+  'Sauerstoff hat die Ordnungszahl 8.',
+  'Natrium und Chlor bilden Kochsalz: NaCl',
+  'Säuren haben einen pH-Wert unter 7.',
+  'Every cloud has a silver lining.',
+  'Zellen teilen sich durch Mitose.',
+  'Bei der Meiose entstehen vier Keimzellen.',
+  'Das Herz pumpt Blut durch den Körper.',
+  'Rote Blutkörperchen transportieren Sauerstoff.',
+  'Die Lunge nimmt Sauerstoff aus der Luft auf.',
+  'Pflanzen brauchen Licht und Wasser.',
+  'Bienen bestäuben viele unserer Obstbäume.',
+  'Der Wal ist ein Säugetier, kein Fisch.',
+  'Frösche sind Amphibien und leben an Teichen.',
+  'Die Evolution erklärt die Vielfalt der Arten.',
+  'Charles Darwin reiste mit der Beagle.',
+  'Please write your name at the top of the page.',
+  'Martin Luther schlug 1517 seine Thesen an.',
+  'Der Dreißigjährige Krieg dauerte bis 1648.',
+  'Kolumbus erreichte 1492 Amerika.',
+  'Die Römer bauten Straßen quer durch Europa.',
+  'Julius Cäsar wurde 44 v. Chr. ermordet.',
+  'Karl der Große wurde im Jahr 800 Kaiser.',
+  'Die Industrialisierung veränderte alles.',
+  'Die erste Dampfmaschine trieb Pumpen an.',
+  'Bismarck gründete 1871 das Deutsche Reich.',
+  'Der Erste Weltkrieg begann im Jahr 1914.',
+  'Yesterday we visited my grandparents.',
+  'Die Demokratie lebt vom Mitmachen.',
+  'Jede Stimme zählt bei der Wahl.',
+  'Legislative, Exekutive, Judikative',
+  'Die EU hat heute 27 Mitgliedsstaaten.',
+  'Der Euro wurde 2002 als Bargeld eingeführt.',
+  'Ein Kilometer hat genau 1000 Meter.',
+  'Eine Stunde hat 60 Minuten oder 3600 Sekunden.',
+  'Ein Schaltjahr hat 366 Tage.',
+  'Der Februar hat meistens nur 28 Tage.',
+  'Januar, Februar, März, April, Mai, Juni',
+  'Juli, August, September, Oktober, November',
+  'Dezember ist der letzte Monat des Jahres.',
+  'Montag, Dienstag, Mittwoch, Donnerstag',
+  'Freitag, Samstag und Sonntag',
+  'Null, eins, zwei, drei, vier, fünf, sechs',
+  'sieben, acht, neun, zehn, elf und zwölf',
+  '0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15',
+  '16, 17, 18, 19, 20, 30, 40, 50, 60, 70, 80, 90',
+  'Bring a jacket, it gets cold in the evening.',
+  'Telefon: 0176 / 482 93 15',
+  'Treffpunkt: Goethestraße 14, 80336 München',
+  'Abfahrt 07:12, Ankunft 09:48',
+  'Termin beim Zahnarzt: Do., 22.10., 14:15 Uhr',
+  'Seite 112 bis 118 lesen und zusammenfassen',
+  'Aufgabe 4b) Begründe deine Antwort.',
+  'Merke: Minus mal Minus ergibt Plus!',
+  '(−3) · (−4) = 12 und (−3) · 4 = −12',
+  '2⁸ = 256 und 2¹⁰ = 1024',
+  '√144 = 12 und √81 = 9',
+  'Brüche addieren: 1/2 + 1/3 = 5/6',
+  '7 · 8 = 56, 6 · 9 = 54, 12 · 12 = 144',
+  'Der Umfang eines Kreises ist U = 2 · π · r.',
+  'Das Volumen eines Würfels ist V = a³.',
+  'Ein rechter Winkel misst genau 90°.',
+  'Parallele Geraden schneiden sich nie.',
+  'Wahrscheinlichkeit: P(Sechs) = 1/6',
+  'Der Mittelwert von 2, 4 und 9 ist 5.',
+  'Think before you speak, and listen first.',
+  'Die Klassenfahrt geht dieses Jahr nach Prag.',
+  'Wir übernachten in einer Jugendherberge.',
+  'Jeder darf höchstens 50 € mitnehmen.',
+  'Der Ausflug beginnt pünktlich um acht Uhr.',
+  'Vergesst eure Ausweise nicht!',
+  'Das Museum war spannender als gedacht.',
+  'Im Zoo haben wir Pinguine gefüttert.',
+  'Am Abend gab es Pizza für alle.',
+  'Der Lehrer erklärte die Aufgabe noch einmal.',
+  'Ich habe die Frage leider nicht verstanden.',
+  'Could you explain that once more, please?',
+  'Kannst du mir deine Notizen ausleihen?',
+  'Die Bibliothek schließt heute schon um 16 Uhr.',
+  'Das Referat halte ich am kommenden Dienstag.',
+  'Mein Thema ist die Geschichte des Buchdrucks.',
+  'Johannes Gutenberg erfand den Buchdruck.',
+  'Plötzlich ging das Licht im ganzen Haus aus.',
+  'Er öffnete vorsichtig die knarrende Tür.',
+  'Draußen heulte der Wind um die Ecken.',
+  'Niemand wusste, wer den Brief schrieb.',
+  'Sie lachte so laut, dass alle sich umdrehten.',
+  'Ich glaube, wir haben uns total verlaufen.',
+  'The museum opens at nine and closes at five.',
+  'Die Straßenbahn quietschte in der Kurve.',
+  'Auf dem Markt duftet es nach frischem Brot.',
+  'Der Bäcker verkauft auch leckere Brezeln.',
+  'Zwei Kugeln Eis, bitte: Vanille und Schoko.',
+  'Ich hätte gern eine Apfelschorle.',
+  'Das Essen war köstlich, vielen Dank!',
+  'Können wir bitte zahlen?',
+  'Wie viel kostet die Fahrkarte nach Köln?',
+  'Gibt es hier in der Nähe eine Apotheke?',
+  'Geradeaus, dann die zweite Straße links.',
+  'Do you know where the nearest bus stop is?',
+  'Der Kühlschrank ist schon wieder fast leer.',
+  'Wer hat das letzte Stück Kuchen gegessen?',
+  'Bitte räum dein Zimmer bis heute Abend auf.',
+  'Die Waschmaschine piept: fertig!',
+  'Mama kommt heute erst gegen 19 Uhr nach Hause.',
+  'Papa repariert gerade das Fahrrad.',
+  'Mein Bruder spielt seit Stunden Videospiele.',
+  'Meine Schwester übt jeden Tag Klavier.',
+  'Unser Nachbar mäht sonntags den Rasen.',
+  'Im Garten blühen die ersten Tulpen.',
+  'I usually go to bed at half past ten.',
+  'Er joggt jeden Morgen eine Runde im Park.',
+  'Beim Schwimmen bin ich 1000 m geschwommen.',
+  'Der Torwart hielt in der 89. Minute.',
+  'Unsere Mannschaft steht jetzt auf Platz 2.',
+  'Das Training fällt am Mittwoch leider aus.',
+  'Ski fahren in Österreich macht riesig Spaß.',
+  'Der Schnee knirscht unter meinen Füßen.',
+  'Am See ist das Wasser im August angenehm warm.',
+  'Wir zelten zwei Nächte am Waldrand.',
+  'Das Lagerfeuer knistert, und alle singen.',
+  'Ein Kauz ruft irgendwo in der Dunkelheit.',
+  'Practice makes perfect, so keep writing.',
+  'Ich programmiere gern kleine Spiele.',
+  'Mein Computer hat eine RTX 2080 Ti.',
+  'Der Code lief erst nach dem fünften Versuch.',
+  'Ein Fehler in Zeile 42 legte alles lahm.',
+  'Speichern nicht vergessen: Strg + S',
+  'Das WLAN ist hier leider sehr langsam.',
+  'Lade das Tablet über Nacht wieder auf.',
+  'Mit dem Pencil schreibe ich in GoodNotes.',
+  'Diese Zeile ist in meiner Handschrift.',
+  'Eine KI lernt aus vielen Beispielen.',
+  'Ein neuronales Netz hat viele Gewichte.',
+  'Training dauert auf der Grafikkarte Stunden.',
+  'Machine learning needs a lot of good data.',
+  'Je mehr Daten, desto besser lernt das Modell.',
+  'Übung macht den Meister.',
+  'Wer zuletzt lacht, lacht am besten.',
+  'Morgenstund hat Gold im Mund.',
+  'Ohne Fleiß kein Preis.',
+  'Aller Anfang ist schwer.',
+  'Lügen haben kurze Beine.',
+  'Der Apfel fällt nicht weit vom Stamm.',
+  'Reden ist Silber, Schweigen ist Gold.',
+  'Wer A sagt, muss auch B sagen.',
+  'Actions speak louder than words.',
+  'Viele Köche verderben den Brei.',
+  'Kleider machen Leute.',
+  'Verschiebe nicht auf morgen, was du kannst.',
+  'In der Kürze liegt die Würze.',
+  'Ende gut, alles gut.',
+  'Zu viel Zucker ist schlecht für die Zähne.',
+  'Ich putze meine Zähne zweimal am Tag.',
+  'Der Arzt sagt, ich soll viel Wasser trinken.',
+  'Gute Besserung und erhol dich gut!',
+  'Ich habe Kopfschmerzen und bleibe zu Hause.',
+  'Meine Entschuldigung liegt dem Brief bei.',
+  'Where there is a will, there is a way.',
+  'Das Gegenteil von hell ist dunkel.',
+  'Groß, größer, am größten',
+  'Gut, besser, am besten',
+  'schnell, langsam, laut, leise, hoch, tief',
+  'Äpfel, Birnen, Pflaumen, Kirschen, Trauben',
+  'Möhren, Gurken, Tomaten und ein Kopfsalat',
+  'Kühe, Schafe, Ziegen und ein müdes Pferd',
+  'Österreich, Schweiz, Dänemark und Polen',
+  'Ägypten, Äthiopien, Uganda und Südafrika',
+  'Übermorgen, überall, überhaupt, übrigens',
+  'Die Jugendlichen äußerten ihre Meinung offen.',
+  'The weather forecast says sunny all week.',
+  'Fußgänger müssen den Gehweg benutzen.',
+  'Bei Rot bleibt man an der Ampel stehen.',
+  'Das Fahrrad braucht eine Klingel.',
+  'Der Weg zur Schule dauert 15 Minuten.',
+  'Die große Pause beginnt um 09:35 Uhr.',
+  'In der Mensa gibt es heute Spaghetti.',
+  'Wir haben jetzt Doppelstunde Chemie.',
+  'Im Labor müssen wir Schutzbrillen tragen.',
+  'Das Experiment hat nicht funktioniert.',
+  'Die Lösung färbte sich plötzlich blau.',
+  'Beobachtung, Vermutung, Versuch, Ergebnis',
+  'History repeats itself, but never exactly.',
+  'Das Ergebnis stimmt mit der Hypothese überein.',
+  'Fehlerquellen: Messfehler und Rundung',
+  'Die Messwerte trage ich in eine Tabelle ein.',
+  'Zeichne ein Diagramm mit beschrifteten Achsen.',
+  'x-Achse: Zeit in s, y-Achse: Weg in m',
+  'Geschwindigkeit ist Weg durch Zeit: v = s / t',
+  'Ein Auto fährt 120 km in 1,5 h, also 80 km/h.',
+  'Der Zug ist mit 250 km/h unterwegs.',
+  'Ein Flugzeug fliegt in 10 km Höhe.',
+  'Die Temperatur fiel nachts auf −8 °C.',
+  'Luftfeuchtigkeit: 65 %, Wind: 12 km/h',
+  'Please hand in your homework by Friday.',
+  'Ich lese gerade ein spannendes Buch.',
+  'Die Geschichte spielt im Jahr 2150.',
+  'Der Held muss eine schwierige Wahl treffen.',
+  'Am Ende war alles ganz anders als gedacht.',
+  'Welches Buch würdest du mir empfehlen?',
+  'Der Film war besser als das Buch.',
+  'Wir schauen heute Abend einen Krimi.',
+  'Mein Lieblingslied läuft gerade im Radio.',
+  'Sie spielt Gitarre in einer kleinen Band.',
+  'Die Trompete klang ein bisschen schief.',
+  'Our band practises every Thursday evening.',
+  'Zeichnen und Malen beruhigen mich.',
+  'Für Kunst brauche ich Pinsel und Farben.',
+  'Der Kunstlehrer mochte mein Bild sehr.',
+  'Im Werkraum bauen wir ein Vogelhaus.',
+  'Die Säge ist scharf, also pass gut auf!',
+  'Mein Großvater war früher Schreiner.',
+  'Er hat mir gezeigt, wie man Holz bearbeitet.',
+  'Jedes Brett muss zuerst geschliffen werden.',
+  'Quietschende Türen brauchen etwas Öl.',
+  'Bitte nicht stören, ich lerne gerade!',
+  'Ich lerne am besten mit Karteikarten.',
+  'Wiederholung ist der Schlüssel zum Erfolg.',
+  'Learning a language takes time and patience.',
+  'Englische Vokabeln: apple, house, friend',
+  'Französisch: Bonjour, merci et au revoir.',
+  'Latein: Veni, vidi, vici.',
+  'Die Klausur wird am 3. Dezember geschrieben.',
+  'Erlaubte Hilfsmittel: Taschenrechner, Lineal',
+  'Bearbeitungszeit: 90 Minuten',
+  'Name, Klasse und Datum oben rechts notieren.',
+  'Viel Erfolg bei der Prüfung!',
+  'Ich habe eine 2+ in Mathe bekommen.',
+  'Im Zeugnis steht in Physik eine 1.',
+  'Never give up on the things you love.',
+  'Nächstes Jahr wähle ich Informatik.',
+  'Später will ich Software entwickeln.',
+  'Ein Praktikum würde mir sehr helfen.',
+  'Die Bewerbung schicke ich bis zum 15. März.',
+  'Lebenslauf: Name, Adresse, Schule, Hobbys',
+  'Hobbys: Programmieren, Fußball, Musik',
+  'Ich bin zuverlässig und arbeite gern im Team.',
+  'Über eine Einladung würde ich mich freuen.',
+  'Zeitplan: Mo Mathe, Di Bio, Mi Deutsch',
+  'To-do: Einkaufen, Bio lernen, Oma anrufen',
+  'Wichtig! Morgen Sportsachen mitbringen.',
+  'P.S. Vergiss die Unterschrift nicht.',
+  'z. B., usw., bzw., d. h., ca., vgl., Nr.',
+  'Don’t forget to bring your passport.',
+  'Wo? Wer? Was? Wann? Warum? Wie? Wozu?',
+  'Ja, nein, vielleicht, auf jeden Fall!',
+  'Das ist ja großartig, ich freu mich riesig!',
+  'Hm, ich bin mir da nicht so sicher...',
+  'Achtung: Rutschgefahr bei Nässe!',
+  'Eintritt frei, Kinder unter 6 Jahren gratis',
+  'Öffnungszeiten: Mo–Fr 8–18 Uhr, Sa 9–13 Uhr',
+  'Rabatt: 20 % auf alles außer Tiernahrung',
+  'Gesamtsumme: 37,85 € inkl. MwSt.',
+  'Lieferung am Dienstag zwischen 10 und 14 Uhr',
+  'Paket abholen bei Familie Schäfer, 2. Stock',
+  'Every journey begins with a single step.',
+  'Vorsicht, der Kaffee ist noch heiß!',
+  'Die Suppe muss noch zehn Minuten köcheln.',
+  'Zwiebeln schälen bringt mich immer zum Weinen.',
+  'Für den Teig: 500 g Mehl, 3 Eier, 250 ml Milch',
+  'Den Ofen auf 180 °C vorheizen.',
+  'Nach 25 Minuten ist der Kuchen goldbraun.',
+  'Guten Appetit und lasst es euch schmecken!',
+  'Die Spülmaschine muss noch ausgeräumt werden.',
+  'Quark mit Früchten schmeckt im Sommer super.',
+  'Heute gibt es Kartoffelsuppe mit Würstchen.',
+  'Jeden Freitag gibt es bei uns Fisch.',
+  'Pancakes with maple syrup are my favourite.',
+  'Die Nacht war sternenklar und eiskalt.',
+  'Man konnte sogar die Milchstraße sehen.',
+  'Ein Komet zog langsam über den Himmel.',
+  'Der Vollmond spiegelte sich im See.',
+  'Morgens lag dichter Nebel über den Feldern.',
+  'Die Vögel zwitschern schon vor sechs Uhr.',
+  'Eine Amsel baut ihr Nest in der Hecke.',
+  'Der Specht klopft laut an den alten Baum.',
+  'Eichhörnchen verstecken im Herbst Nüsse.',
+  'Ein Igel überquerte langsam die Straße.',
+  'The stars were shining brightly last night.',
+  'Ich wünsche dir ein frohes neues Jahr 2027!',
+  'Frohe Weihnachten und schöne Feiertage!',
+  'Zu Ostern suchen wir bunte Eier im Garten.',
+  'An Silvester gibt es um Mitternacht Feuerwerk.',
+  'Mein Geburtstag ist am 7. Juli.',
+  'Zur Party kommen ungefähr 15 Freunde.',
+  'Bring bitte Chips und etwas zu trinken mit.',
+  'Die Feier geht von 18 bis 22 Uhr.',
+  'Danke für das tolle Geschenk!',
+  'Ich hab dich lieb. Dein Rüben',
+  'Happy birthday, have a wonderful day!',
+  'Das Leben ist zu kurz für schlechten Kaffee.',
+  'Manchmal muss man einfach anfangen.',
+  'Fehler zeigen, dass du es versuchst.',
+  'Heute ist ein guter Tag, um etwas zu lernen.',
+  'Jeder Tag ist eine neue Chance.',
+  'Kleine Schritte führen auch ans Ziel.',
+  'Zweifel sind normal, aufgeben nicht.',
+  'Mut bedeutet, trotz Angst weiterzugehen.',
+  'Neugier ist der Anfang von allem Wissen.',
+  'Wissen ist Macht, Bildung ist Freiheit.',
+  'Knowledge is power, but practice is key.',
+  'Das Wort „Schifffahrt“ hat drei f.',
+  '„usw.“ steht für „und so weiter“.',
+  'Komma vor „aber“, „sondern“ und „denn“.',
+  'Nomen schreibt man groß: der Baum, die Idee.',
+  'Verben sind Tätigkeiten: laufen, denken.',
+  'Adjektive beschreiben: schön, klug, müde.',
+  'Ich ging, du gingst, er ging, wir gingen.',
+  'Ich bin gegangen, ich war gegangen.',
+  'das Haus, des Hauses, dem Haus, das Haus',
+  'Plural: der Vogel, die Vögel; das Buch',
+  'Present perfect: I have finished my homework.',
+  'Past simple: Yesterday I played football.',
+  'If I had more time, I would learn Japanese.',
+  'Questions: Where do you live? How old are you?',
+  'Irregular verbs: go, went, gone',
+  'Excuse me, is this seat taken?',
+  'Quiz: Wie viele Beine hat eine Spinne? Acht.',
+  'Rätsel: Was hat Zähne, aber beißt nicht?',
+  'Antwort: ein Kamm oder ein Reißverschluss',
+  'Fischers Fritz fischt frische Fische.',
+  'Blaukraut bleibt Blaukraut.',
+  'Zehn zahme Ziegen zogen zehn Zentner Zucker.',
+  'Max Planck erhielt 1918 den Nobelpreis.',
+  'Albert Einstein: E = m · c²',
+  'Marie Curie forschte an Radioaktivität.',
+  'Isaac Newton beschrieb die Schwerkraft.',
+  'Galileo Galilei beobachtete die Jupitermonde.',
+  'Ada Lovelace gilt als erste Programmiererin.',
+  'Alan Turing knackte die Enigma-Codes.',
+  'Konrad Zuse baute 1941 den ersten Computer Z3.',
+  'Wikipedia wurde im Jahr 2001 gegründet.',
+  'Das Internet verbindet Milliarden Geräte.',
+  'Passwörter sollten lang und einzigartig sein.',
+  'Sichere Passwörter: mindestens 12 Zeichen!',
+  'E-Mail: name@beispiel.de',
+  'Website: www.beispiel.de/seite?id=7',
+  'Quellenangabe: vgl. S. 23 f.',
+  'Klammern (rund), [eckig] und {geschweift}',
+  'Sonderzeichen: & % $ § # @ * + = / \\ |',
+  'Anführungszeichen: „deutsch“ und "english"',
+  'Bindestrich - Gedankenstrich – Unterstrich _',
+  'Apostroph: Peter’s Buch, geht’s gut?',
+  'Fragezeichen? Ausrufezeichen! Punkt.',
+  'Doppelpunkt: und Semikolon; und Komma,',
+  'Bei Regen nehme ich den Bus; sonst laufe ich.',
+  'Die Kinder spielen draußen im Hof.',
+  'Der Postbote bringt heute ein großes Paket.',
+  'Auf dem Dachboden stehen alte Kisten.',
+  'In einer Kiste lagen vergilbte Fotos.',
+  'Opa erzählt gern von früher.',
+  'Damals gab es noch kein Handy.',
+  'Briefe brauchten oft eine Woche.',
+  'Heute schreibe ich lieber Nachrichten.',
+  'Aber mit der Hand zu schreiben ist schöner.',
+  'Meine Schrift ist etwas schief, aber lesbar.',
+  'Some people say my handwriting is very neat.',
+  'Ich schreibe mit orangefarbener Tinte.',
+  'Grüne Wiesen, blauer Himmel, weiße Wolken.',
+  'Das Meer rauscht, und die Möwen kreischen.',
+  'Am Strand bauen Kinder eine riesige Sandburg.',
+  'Die Flut kommt jeden Tag zweimal.',
+  'Auf Sylt weht fast immer ein kräftiger Wind.',
+  'Im Watt findet man Muscheln und Krebse.',
+  'Ein Leuchtturm zeigt den Schiffen den Weg.',
+  'Der Kapitän steuert das Schiff in den Hafen.',
+  'Matrosen ziehen die schweren Taue ein.',
+  'Möwen stehlen gern Pommes von Touristen.',
+  'Do not feed the seagulls, they are very bold.',
+  'Die Berge sind im Winter tief verschneit.',
+  'Der Aufstieg zur Hütte dauert drei Stunden.',
+  'Oben gibt es Kaiserschmarrn und Kakao.',
+  'Die Aussicht vom Gipfel ist atemberaubend.',
+  'Murmeltiere pfeifen, wenn Gefahr droht.',
+  'Ein Adler kreist hoch über dem Tal.',
+  'Der Bergsee ist eiskalt und glasklar.',
+  'Im Tal läuten die Kirchenglocken.',
+  'Wir wandern zurück, bevor es dunkel wird.',
+  'Müde, aber glücklich kommen wir an.',
+  'Gute Nacht und schlaf gut!',
+  'Xaver und Yvonne fahren nach Ypsilanti.',
+  'Max & Moritz kosten zusammen 12 €.',
+  'Yoga im Park: Xenia, Yusuf & Xaver',
+  'Er sagte: "Ich komme gleich wieder."',
+  'Das Ticket kostet 8,50 € pro Person.',
+  'Year 10 students: Xavier & Yasmin',
+  'Der Laptop von Xaver kostet 899 €.',
+  'Thank you for writing all of these lines.',
+];
+
+// ---------- state ----------
+const LS_KEY = 'hwcap.settings.v1';
+const defaults = { pos: 0, gap: 40, penOnly: true, skipped: [], lastExport: 0 };
+let settings = Object.assign({}, defaults, JSON.parse(localStorage.getItem(LS_KEY) || '{}'));
+const saveSettings = () => localStorage.setItem(LS_KEY, JSON.stringify(settings));
+
+let db = null;
+const lines = new Map();        // id -> saved record (mirror of IndexedDB, so export stays synchronous)
+let strokes = [];               // current line: [[[x,y,t,p,tiltX,tiltY], ...], ...]
+let active = null;              // { id: pointerId, pts, rect }
+let t0 = null;                  // timeStamp of the first point of the current line
+let curGap = settings.gap;      // rule spacing the current strokes were written on
+let curText = null;             // transcription override for the current line
+let dirty = false;              // current line has unsaved changes
+let lastPenAt = -Infinity;
+
+const $ = id => document.getElementById(id);
+const pad = $('pad'), ctx = pad.getContext('2d');
+
+// ---------- IndexedDB ----------
+function openDB() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open('handschrift', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('lines', { keyPath: 'id' });
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+function idb(mode, fn) {
+  return new Promise((res, rej) => {
+    const tx = db.transaction('lines', mode);
+    const out = fn(tx.objectStore('lines'));
+    tx.oncomplete = () => res(out && out.result);
+    tx.onerror = tx.onabort = () => rej(tx.error || new Error('IndexedDB-Fehler'));
+  });
+}
+
+// ---------- geometry ----------
+// The sheet shows three ruled lines like GoodNotes lined paper; the writing baseline is the middle one.
+const geom = g => ({ gap: g, top: 0.45 * g, base: 1.45 * g, bottom: 2.45 * g, height: Math.round(2.9 * g) });
+const inkWidth = g => Math.max(1.6, g * 0.06);
+
+function sizeCanvas() {
+  const g = geom(curGap), w = pad.parentElement.clientWidth, dpr = window.devicePixelRatio || 1;
+  pad.style.height = g.height + 'px';
+  pad.width = Math.round(w * dpr);
+  pad.height = Math.round(g.height * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  redraw();
+}
+
+function redraw() {
+  const g = geom(curGap), w = pad.width / (window.devicePixelRatio || 1);
+  ctx.clearRect(0, 0, w, g.height);
+  for (const [y, base] of [[g.top, false], [g.base, true], [g.bottom, false]]) {
+    ctx.beginPath();
+    ctx.strokeStyle = base ? '#66554a' : '#3b322b';
+    ctx.lineWidth = base ? 1.5 : 1;
+    ctx.moveTo(0, Math.round(y) + 0.5); ctx.lineTo(w, Math.round(y) + 0.5);
+    ctx.stroke();
+  }
+  ctx.strokeStyle = ctx.fillStyle = '#e67300';
+  ctx.lineWidth = inkWidth(curGap);
+  ctx.lineCap = ctx.lineJoin = 'round';
+  for (const s of strokes) drawStroke(s);
+}
+
+function drawStroke(s) {
+  if (s.length === 1) { dot(s[0]); return; }
+  ctx.beginPath();
+  ctx.moveTo(s[0][0], s[0][1]);
+  for (let i = 1; i < s.length - 1; i++) {
+    const mx = (s[i][0] + s[i + 1][0]) / 2, my = (s[i][1] + s[i + 1][1]) / 2;
+    ctx.quadraticCurveTo(s[i][0], s[i][1], mx, my);
+  }
+  const last = s[s.length - 1];
+  ctx.lineTo(last[0], last[1]);
+  ctx.stroke();
+}
+function dot(p) { ctx.beginPath(); ctx.arc(p[0], p[1], ctx.lineWidth / 2, 0, Math.PI * 2); ctx.fill(); }
+
+// ---------- pen input ----------
+const r2 = v => Math.round(v * 100) / 100;
+function accepts(e) { return settings.penOnly ? e.pointerType === 'pen' : true; }
+
+function pointOf(e, rect) {
+  if (t0 === null) {
+    // continuing a reloaded line: put the new strokes 300 ms after its last point
+    const prev = strokes.length ? strokes[strokes.length - 1] : null;
+    t0 = e.timeStamp - (prev ? prev[prev.length - 1][2] + 300 : 0);
+  }
+  return [r2(e.clientX - rect.left), r2(e.clientY - rect.top), Math.round(e.timeStamp - t0),
+          Math.round((e.pressure || 0) * 1000) / 1000, e.tiltX || 0, e.tiltY || 0];
+}
+
+pad.addEventListener('pointerdown', e => {
+  if (!accepts(e)) {
+    // palm and finger touches are ignored; only explain it when no pen is in use
+    if (e.pointerType !== 'pen' && !active && performance.now() - lastPenAt > 1500)
+      showHint('Finger wird ignoriert: „Nur Stift“ ist an.', true);
+    return;
+  }
+  if (active) return;
+  e.preventDefault();
+  if (strokes.length === 0) { curGap = settings.gap; sizeCanvas(); }
+  pad.setPointerCapture(e.pointerId);
+  const rect = pad.getBoundingClientRect();
+  active = { id: e.pointerId, pts: [], rect };
+  active.pts.push(pointOf(e, rect));
+  strokes.push(active.pts);
+  dirty = true;
+  ctx.strokeStyle = ctx.fillStyle = '#e67300';
+  ctx.lineWidth = inkWidth(curGap);
+  dot(active.pts[0]);
+  showHint('');
+  updateButtons();
+});
+
+pad.addEventListener('pointermove', e => {
+  if (!active || e.pointerId !== active.id) return;
+  e.preventDefault();
+  const evs = (e.getCoalescedEvents && e.getCoalescedEvents().length) ? e.getCoalescedEvents() : [e];
+  for (const ce of evs) {
+    const p = pointOf(ce, active.rect), prev = active.pts[active.pts.length - 1];
+    if (p[0] === prev[0] && p[1] === prev[1]) continue;
+    active.pts.push(p);
+    ctx.beginPath(); ctx.moveTo(prev[0], prev[1]); ctx.lineTo(p[0], p[1]); ctx.stroke();
+  }
+});
+
+function endStroke(e) {
+  if (!active || e.pointerId !== active.id) return;
+  if (e.pointerType === 'pen') lastPenAt = performance.now();
+  active = null;
+  redraw();   // replace the raw segments with the smoothed curve
+}
+pad.addEventListener('pointerup', endStroke);
+pad.addEventListener('pointercancel', endStroke);
+pad.addEventListener('touchstart', e => e.preventDefault(), { passive: false });
+pad.addEventListener('contextmenu', e => e.preventDefault());
+
+// ---------- navigation ----------
+const isOpen = i => !lines.has(i) && !settings.skipped.includes(i);
+function nextOpen(from) {
+  for (let i = from; i < PROMPTS.length; i++) if (isOpen(i)) return i;
+  return PROMPTS.length;
+}
+
+function load(pos) {
+  settings.pos = pos; saveSettings();
+  const rec = lines.get(pos);
+  strokes = rec ? rec.strokes.map(s => s.map(p => p.slice())) : [];
+  curGap = rec ? rec.guide.gap : settings.gap;
+  curText = rec && rec.text !== rec.prompt ? rec.text : null;
+  t0 = null;
+  dirty = false; active = null;
+  render();
+  sizeCanvas();
+}
+
+function render() {
+  const pos = settings.pos, finished = pos >= PROMPTS.length;
+  document.body.classList.toggle('finished', finished);
+  $('count').textContent = lines.size;
+  $('total').textContent = '/ ' + PROMPTS.length;
+  $('meter').style.width = (100 * lines.size / PROMPTS.length) + '%';
+  const unexported = [...lines.values()].filter(r => r.savedAt > settings.lastExport).length;
+  $('badge').textContent = unexported || '';
+  if (finished) {
+    const sk = settings.skipped.length;
+    $('eyebrow').textContent = 'Fertig';
+    $('promptText').textContent = 'Alle Sätze sind durch.';
+    $('doneText').textContent = `${lines.size} Zeilen geschrieben${sk ? `, ${sk} übersprungen` : ''}. ` +
+      'Tippe oben auf „Exportieren“ und schick die Datei an den PC.';
+    $('redoSkipped').style.display = sk ? '' : 'none';
+  } else {
+    const saved = lines.has(pos);
+    const parts = [`Zeile ${pos + 1}`, saved ? 'gespeichert' : 'schreib genau diesen Satz'];
+    $('eyebrow').innerHTML = parts.join(' · ') + (curText !== null ? ' · <span class="fix">Text angepasst</span>' : '');
+    $('promptText').textContent = curText !== null ? curText : PROMPTS[pos];
+    if (!strokes.length) showHint('Schreib auf die mittlere, hellere Linie.');
+  }
+  updateButtons();
+}
+
+function updateButtons() {
+  const has = strokes.length > 0;
+  $('undoBtn').disabled = !has;
+  $('clearBtn').disabled = !has;
+  $('nextBtn').disabled = !has;
+  $('prevBtn').disabled = settings.pos === 0;
+  $('gap').disabled = has;
+  $('panelNote').textContent = has
+    ? 'Erst die Zeile speichern oder löschen, dann lässt sich der Abstand ändern.'
+    : 'Stell den Abstand so ein, dass du so groß schreibst wie in GoodNotes.';
+}
+
+function confirmDiscard() {
+  return !dirty || confirm('Diese Zeile ist noch nicht gespeichert. Verwerfen?');
+}
+
+async function saveCurrent() {
+  const g = geom(curGap), pos = settings.pos;
+  const first = strokes[0][0], lastS = strokes[strokes.length - 1], last = lastS[lastS.length - 1];
+  const rec = {
+    id: pos,
+    prompt: PROMPTS[pos],
+    text: curText !== null ? curText : PROMPTS[pos],
+    strokes,
+    guide: { gap: g.gap, topRule: g.top, baseline: g.base, bottomRule: g.bottom,
+             width: Math.round(pad.clientWidth), height: g.height },
+    device: { dpr: window.devicePixelRatio || 1, screenW: screen.width, screenH: screen.height,
+              coalesced: typeof PointerEvent !== 'undefined' && 'getCoalescedEvents' in PointerEvent.prototype },
+    penOnly: settings.penOnly,
+    durationMs: last[2] - first[2],
+    savedAt: Date.now(),
+    app: APP_VERSION,
+  };
+  await idb('readwrite', st => st.put(rec));
+  lines.set(pos, rec);
+  settings.skipped = settings.skipped.filter(i => i !== pos);
+  if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+}
+
+$('nextBtn').onclick = async () => {
+  if (!strokes.length) return;
+  $('nextBtn').disabled = true;
+  try {
+    if (dirty || !lines.has(settings.pos)) await saveCurrent();
+  } catch (err) {
+    toast('Speichern fehlgeschlagen: ' + (err && err.message || err) + '. Bitte sofort exportieren.', true);
+    updateButtons();
+    return;
+  }
+  load(nextOpen(settings.pos + 1));
+};
+$('skipBtn').onclick = () => {
+  if (!confirmDiscard()) return;
+  if (!lines.has(settings.pos) && !settings.skipped.includes(settings.pos)) settings.skipped.push(settings.pos);
+  load(nextOpen(settings.pos + 1));
+};
+$('prevBtn').onclick = () => {
+  if (settings.pos === 0 || !confirmDiscard()) return;
+  load(Math.min(settings.pos, PROMPTS.length) - 1);
+};
+$('undoBtn').onclick = () => { strokes.pop(); dirty = true; if (!strokes.length) t0 = null; redraw(); render(); };
+$('clearBtn').onclick = () => { strokes = []; t0 = null; dirty = true; curGap = settings.gap; sizeCanvas(); render(); };
+$('redoSkipped').onclick = () => { settings.skipped = []; load(nextOpen(0)); };
+$('editBtn').onclick = () => {
+  const now = curText !== null ? curText : PROMPTS[settings.pos];
+  const v = prompt('Was steht wirklich in deiner Zeile? (Wort für Wort, inklusive Fehler)', now);
+  if (v === null) return;
+  const t = v.trim();
+  curText = (!t || t === PROMPTS[settings.pos]) ? null : t;
+  if (lines.has(settings.pos)) dirty = true;
+  render();
+};
+
+// ---------- settings ----------
+$('penOnly').checked = settings.penOnly;
+$('penOnly').onchange = e => { settings.penOnly = e.target.checked; saveSettings(); };
+$('gap').value = settings.gap; $('gapOut').textContent = settings.gap + ' px';
+$('gap').oninput = e => {
+  settings.gap = +e.target.value; saveSettings();
+  $('gapOut').textContent = settings.gap + ' px';
+  if (!strokes.length) { curGap = settings.gap; sizeCanvas(); }
+};
+$('settingsBtn').onclick = () => {
+  const p = $('panel'); p.hidden = !p.hidden;
+  $('settingsBtn').setAttribute('aria-expanded', String(!p.hidden));
+  sizeCanvas();
+};
+
+// ---------- export / import ----------
+function stamp() {
+  const d = new Date(), z = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}${z(d.getMonth() + 1)}${z(d.getDate())}-${z(d.getHours())}${z(d.getMinutes())}`;
+}
+function markExported() { settings.lastExport = Date.now(); saveSettings(); render(); toast('Exportiert.'); }
+
+$('exportBtn').onclick = () => {
+  const all = [...lines.values()].sort((a, b) => a.id - b.id);
+  if (!all.length) { toast('Noch keine Zeile gespeichert.'); return; }
+  const payload = {
+    meta: {
+      kind: 'handwriting-lines', version: 1, app: APP_VERSION, exportedAt: new Date().toISOString(),
+      ua: navigator.userAgent, promptCount: PROMPTS.length, skipped: settings.skipped.slice(),
+      pointFormat: ['x', 'y', 't_ms', 'pressure', 'tiltX', 'tiltY'],
+      coords: 'CSS px, origin = top-left of the writing sheet; guide.baseline is the rule written on; t_ms counts from the first point of the line',
+    },
+    lines: all,
+  };
+  const name = `handschrift-${stamp()}-${all.length}z.json`;
+  const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+  const file = new File([blob], name, { type: 'application/json' });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    navigator.share({ files: [file], title: name }).then(markExported).catch(err => {
+      if (err && err.name === 'AbortError') return;
+      download(blob, name);
+    });
+  } else {
+    download(blob, name);
+  }
+};
+function download(blob, name) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+  markExported();
+}
+
+$('importBtn').onclick = () => $('importFile').click();
+$('importFile').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = '';
+  if (!f) return;
+  try {
+    const data = JSON.parse(await f.text());
+    if (!data || data.meta?.kind !== 'handwriting-lines' || !Array.isArray(data.lines)) throw new Error('keine Export-Datei dieser Seite');
+    let n = 0;
+    for (const rec of data.lines) {
+      const have = lines.get(rec.id);
+      if (have && have.savedAt >= rec.savedAt) continue;
+      await idb('readwrite', st => st.put(rec));
+      lines.set(rec.id, rec); n++;
+    }
+    toast(`${n} Zeilen eingelesen.`);
+    load(lines.has(settings.pos) ? settings.pos : nextOpen(0));
+  } catch (err) {
+    toast('Einlesen fehlgeschlagen: ' + err.message, true);
+  }
+};
+
+// ---------- feedback ----------
+let hintTimer = 0;
+function showHint(text, warn) {
+  const h = $('hint');
+  clearTimeout(hintTimer);
+  h.textContent = text; h.classList.toggle('warn', !!warn);
+  if (warn) hintTimer = setTimeout(() => showHint(strokes.length ? '' : 'Schreib auf die mittlere, hellere Linie.'), 1800);
+}
+let toastTimer = 0;
+function toast(text, bad) {
+  const t = $('toast');
+  t.textContent = text; t.classList.toggle('bad', !!bad); t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), bad ? 6000 : 2200);
+}
+
+window.addEventListener('resize', () => sizeCanvas());
+window.addEventListener('beforeunload', e => { if (dirty && strokes.length) { e.preventDefault(); e.returnValue = ''; } });
+
+// ---------- start ----------
+(async () => {
+  try {
+    db = await openDB();
+    for (const rec of await idb('readonly', st => st.getAll())) lines.set(rec.id, rec);
+  } catch (err) {
+    toast('Speicher nicht verfügbar: ' + (err && err.message || err) + '. Privater Modus?', true);
+  }
+  load(Math.min(settings.pos, PROMPTS.length));
+})();
+</script>
+</body>
+</html>
