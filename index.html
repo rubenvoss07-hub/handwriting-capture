@@ -71,6 +71,8 @@ button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .panel[hidden]{display:none}
 .panel label{display:flex;align-items:center;gap:var(--s3)}
 .panel input[type=range]{width:220px;accent-color:var(--accent)}
+.panel select{height:40px;padding:0 var(--s3);border:0;border-radius:var(--r-sm);background:var(--surface-3);color:var(--text);font:inherit}
+.panel select:focus-visible{outline:2px solid var(--text);outline-offset:1px}
 .panel output{font-family:var(--mono);color:var(--text);min-width:5ch}
 .panel .note{flex-basis:100%;margin:0;color:var(--text-3);font-size:14px}
 
@@ -129,6 +131,7 @@ body.finished .done{display:block}
   </header>
 
   <div class="panel" id="panel" hidden>
+    <label>Satzliste <select id="setSel"></select></label>
     <label>Linienabstand <input type="range" id="gap" min="24" max="72" step="1"><output id="gapOut"></output></label>
     <button class="ghost" id="importBtn">Backup einlesen</button>
     <input type="file" id="importFile" accept="application/json,.json" hidden>
@@ -676,13 +679,229 @@ const PROMPTS = [
   'Year 10 students: Xavier & Yasmin',
   'Der Laptop von Xaver kostet 899 €.',
   'Thank you for writing all of these lines.',
+  // ---- set "latein-l34" (index 509 on): Latin textbook, Lektion 34, pages 50-55. Only facts and
+  // terms from those pages; the two Latin passages appear as German translations. No macrons.
+  'Marcus Tullius Cicero lebte 106–43 v. Chr.',
+  'Beruf: Politiker und Anwalt',
+  'Eigenschaften: politischer Ehrgeiz,',
+  'rhetorische Brillanz und',
+  'konservative Prinzipientreue',
+  '75–63: alle Ämter des cursus honorum',
+  'zum frühestmöglichen Zeitpunkt (suo anno)',
+  'Aufstieg vom Ritterstand in den Senatsadel',
+  '63: Konsulat des Cicero',
+  'Aufdeckung der Verschwörung des Catilina',
+  'Hinrichtung fünf ranghoher Verschwörer',
+  'Ehrentitel: pater patriae',
+  '60: keine Beteiligung am Triumvirat',
+  '58: Exil in Griechenland',
+  'wegen eines Gesetzes des Volkstribunen Clodius',
+  '57: Aufhebung des Exils, Rückkehr nach Rom',
+  '56–52: keine politische Betätigung,',
+  'wegen Bandenterror und Straßenkämpfen',
+  'erste schriftstellerische Schaffensperiode',
+  'mit Werken über Staatstheorie',
+  '52: Milo-Prozess',
+  'Cicero verteidigt Milo gegen die Mordanklage.',
+  '49–47: Bürgerkrieg, Ausreise nach Griechenland',
+  'und Rückzug aus der Politik',
+  '47–44: zweite Schaffensperiode',
+  'mit Werken über Rhetorik',
+  'und über griechische Philosophie',
+  '43: Ermordung Ciceros',
+  'Optimaten und Popularen: zwei Richtungen',
+  'Popularen (populares): zum Beispiel Caesar',
+  'Ziele mithilfe des Volkes umsetzen',
+  'Optimaten (optimates): zum Beispiel Cicero',
+  'Ziele mithilfe des Senats erreichen',
+  '60 v. Chr.: Caesar, Pompeius und Crassus',
+  'schließen einen Drei-Männer-Bund.',
+  'Das Triumvirat ist ein Interessenbündnis.',
+  'Ziel: sich gegen den Senat durchsetzen',
+  'Caesar wollte Gallien als Provinz',
+  'für sein Prokonsulat sichern.',
+  'Pompeius brauchte Land für seine Veteranen.',
+  'Crassus wollte ein Militärkommando im Osten.',
+  'Im Staat sollte nichts mehr geschehen,',
+  'was einem von ihnen missfiel.',
+  'Die Optimaten fürchteten um den Bestand',
+  'der Republik.',
+  'Cicero kritisierte das Triumvirat öffentlich.',
+  'Er wollte Pompeius für die Optimaten gewinnen.',
+  'Caesar wollte über den Volkstribunen Clodius',
+  'aus Gallien die Stadtpolitik kontrollieren.',
+  'Clodius schüchterte mit seinen Banden',
+  'und dem aufgewiegelten Volk',
+  'Ciceros Familie und die Optimaten ein.',
+  'Er zwang Cicero durch ein Gesetz',
+  'in die Verbannung.',
+  'Clodius’ Gegner war T. Annius Milo.',
+  'Milo wurde mit Pompeius’ Hilfe Volkstribun.',
+  'Er organisierte Banden und Gladiatoren',
+  'zur Gegenwehr für die Optimaten.',
+  'Milo setzte sich für Ciceros Rückkehr ein',
+  'und gewährte seiner Familie Schutz.',
+  '53 v. Chr. spitzte sich die Lage zu.',
+  'Milo bewarb sich um das Konsulat,',
+  'Clodius um die Prätur.',
+  'Für 52 v. Chr. wählte man weder Konsuln',
+  'noch Prätoren.',
+  'So wollte man ein politisches Chaos vermeiden.',
+  'Pompeius war also alleiniger Konsul.',
+  'Am 18. Januar gingen Clodius und Milo',
+  'auf der Via Appia aufeinander los.',
+  'Die Begegnung endete mit Clodius’ Tod.',
+  'Milo wurde wegen Mordes angeklagt.',
+  'Cicero übernahm seine Verteidigung.',
+  'Er hatte keinen Erfolg und verlor den Prozess.',
+  'Rhetorik als unverzichtbares Instrument',
+  'In der Antike war Rhetorik ein elementarer',
+  'Bestandteil der Ausbildung.',
+  'Jeder Redner befolgte Regeln zur Gestaltung',
+  'und Darbietung, um sein Ziel zu erreichen.',
+  'Aufbau einer Rede aus folgenden Teilen:',
+  'exordium (Einleitung):',
+  'das Interesse des Publikums wecken',
+  'narratio (Schilderung des Sachverhalts):',
+  'das Publikum gewinnen:',
+  'kurze, anschauliche und parteiische',
+  'Darstellung des Sachverhalts',
+  'argumentatio (Beweisführung):',
+  'das Publikum rational überzeugen:',
+  'Widerlegung der gegnerischen Argumente,',
+  'Anführen der eigenen Argumente',
+  'peroratio (Schluss):',
+  'das Publikum emotional überreden:',
+  'Hass, Gunst oder Mitleid erregen',
+  'Politik vor Gericht: Es ging um Mord,',
+  'aber die Umstände waren politischer Natur.',
+  'Zugrunde lag der Konflikt zwischen',
+  'Popularen und Optimaten.',
+  'Der verlorene Prozess war für Cicero',
+  'auch politisch eine Niederlage.',
+  'Er bearbeitete seine Rede im Nachhinein',
+  'und veröffentlichte sie.',
+  'Die Rede, die wir heute lesen, ist',
+  'literarisch angereichert',
+  'und brillant aufpoliert.',
+  'Rom zur Zeit des Bandenterrors',
+  'Clodius und Milo organisierten Straßenkämpfe',
+  'für die Popularen und die Optimaten.',
+  'Ohne Gefolge wagte sich kein Römer hinaus.',
+  'Cicero wurde auf dem Weg zum Senat',
+  'nicht selten beschimpft oder verletzt.',
+  'Sich auf dem Forum aufzuhalten war gefährlich.',
+  'In der Stadt waren Wagen und Reiten verboten.',
+  'Es blieb nur der Weg zu Fuß.',
+  'Wer die Stadt verließ, musste sich',
+  'auf Gefahren vorbereiten.',
+  'Wegelagerer lauerten Reisewagen auf.',
+  'Wer nur seinen Reisemantel verlor,',
+  'kam glimpflich davon.',
+  'nullus: kein',
+  'comitatus, -us: das Gefolge',
+  'senatus, -us: der Senat',
+  'proficisci, -or: aufbrechen',
+  'ut: wie',
+  'morari: sich aufhalten',
+  'vehi, -or: fahren',
+  'comparare: vorbereiten',
+  'insidiator, -oris: der Wegelagerer',
+  'raeda: der Reisewagen',
+  'expeditus, -a, -um: ungehindert',
+  'paenula: der Reisemantel',
+  'Clodius und Milo suchten absichtlich',
+  'die blutige Auseinandersetzung.',
+  'Das war ein Nachteil für Milo im Prozess.',
+  'Cicero wollte einen Freispruch erreichen.',
+  'Er musste die Richter von Milos Unschuld',
+  'überzeugen.',
+  'Milo war aber nicht frei von Schuld.',
+  'Rhetorik nach Aristoteles: die Kunst,',
+  'an jedem Gegenstand das möglicherweise',
+  'Überzeugende zu finden',
+  'Die Richter würden streng nach Gesetz urteilen.',
+  'Cicero musste zeigen, dass Milo nicht',
+  'gegen diese Gesetze gehandelt hatte.',
+  'Cicero klagt an: Ein Attentat mit Vorsatz',
+  'Wir hätten es sicher voraussehen können:',
+  'Clodius sagte nämlich, man könne Milo',
+  'das Konsulat nicht entreißen, das Leben schon.',
+  'Das sagte er oft im Senat',
+  'und in der Volksversammlung.',
+  'Marcus Favonius, ein hochangesehener Mann,',
+  'fragte ihn: „Welche Hoffnung hast du',
+  'auf das Konsulat, solange Milo lebt?“',
+  'Clodius antwortete:',
+  '„In drei oder vier Tagen wird er sterben.“',
+  'Dieser Text stammt aus der narratio.',
+  'consulatus, -us: das Konsulat',
+  'contio, -onis: die Volksversammlung',
+  'triduo / quadriduo: in drei / vier Tagen',
+  'Eine folgenschwere Begegnung',
+  'Cicero schildert den Tag von Clodius’ Tod.',
+  'Er zieht alle rhetorischen Register.',
+  'Er will von Milos Unschuld überzeugen.',
+  'Milo war an diesem Tag im Senat gewesen.',
+  'Dann kam er nach Hause.',
+  'Er wechselte Schuhe und Kleidung.',
+  'Er wartete ein wenig, während sich',
+  'seine Frau (wie es so geht) fertig machte.',
+  'Dann brach er auf.',
+  'Clodius begegnete ihm, ungehindert, zu Pferd,',
+  'ohne Reisewagen, ohne Gepäck,',
+  'ohne Begleiter und ohne Frau.',
+  'Dagegen fuhr dieser „Wegelagerer“,',
+  'der die Reise zum Mord geplant haben soll,',
+  'mit seiner Frau im Reisewagen,',
+  'im Reisemantel und mit großem Gefolge',
+  'von Dienerinnen und Dienern.',
+  'Das Gefolge war bepackt, weiblich',
+  'und verweichlicht.',
+  'Er traf Clodius vor dessen Grundstück,',
+  'etwa zur elften Stunde.',
+  'Sofort wagten mehrere, ihn mit Waffen',
+  'anzugreifen: Sie töteten den Kutscher.',
+  'Milo warf den Reisemantel zurück,',
+  'sprang vom Wagen herab',
+  'und verteidigte sich mit entschlossenem Mut.',
+  'Die Leute des Clodius zogen ihre Schwerter.',
+  'Ein Teil lief zum Wagen zurück,',
+  'um Milo von hinten anzugreifen.',
+  'Ein Teil glaubte, er sei schon tot.',
+  'Sie begannen, seine Sklaven zu töten,',
+  'die hinter ihm waren.',
+  'Milos Sklaven waren ihrem Herrn treu.',
+  'Ein Teil von ihnen wurde getötet.',
+  'Die anderen taten ohne Befehl und Wissen',
+  'ihres Herrn das, was wir alle in einer',
+  'solchen Lage von unseren Sklaven',
+  'gefordert hätten.',
+  'calceus: der Schuh',
+  'paenulatus: im Reisegewand',
+  'impeditus: bepackt',
+  'ancillae puerique: Dienerinnen und Diener',
+  'fundus: das Grundstück',
+  'hora undecima: zur elften Stunde',
+  'raedarius: der Kutscher',
+  'reicere: zurückwerfen',
+  'desilire: herabspringen',
+];
+
+// Prompt sets are consecutive ranges of PROMPTS. A new topic is appended as a new set, so the ids of
+// lines already written never change. The page starts in the newest set.
+const PROMPT_SETS = [
+  { id: 'allgemein', name: 'Allgemeine Sätze', from: 0, to: 509 },
+  { id: 'latein-l34', name: 'Latein L34: Cicero und Milo', from: 509, to: PROMPTS.length },
 ];
 
 // ---------- state ----------
 const LS_KEY = 'hwcap.settings.v1';
-const defaults = { pos: 0, gap: 40, penOnly: true, skipped: [], lastExport: 0 };
+const defaults = { pos: 0, gap: 40, penOnly: true, skipped: [], lastExport: 0,
+                   set: PROMPT_SETS[PROMPT_SETS.length - 1].id, posBySet: {} };
 let settings = Object.assign({}, defaults, JSON.parse(localStorage.getItem(LS_KEY) || '{}'));
 const saveSettings = () => localStorage.setItem(LS_KEY, JSON.stringify(settings));
+const curSet = () => PROMPT_SETS.find(s => s.id === settings.set) || PROMPT_SETS[PROMPT_SETS.length - 1];
 
 let db = null;
 const lines = new Map();        // id -> saved record (mirror of IndexedDB, so export stays synchronous)
@@ -822,12 +1041,16 @@ pad.addEventListener('contextmenu', e => e.preventDefault());
 // ---------- navigation ----------
 const isOpen = i => !lines.has(i) && !settings.skipped.includes(i);
 function nextOpen(from) {
-  for (let i = from; i < PROMPTS.length; i++) if (isOpen(i)) return i;
-  return PROMPTS.length;
+  const s = curSet();
+  for (let i = Math.max(from, s.from); i < s.to; i++) if (isOpen(i)) return i;
+  return s.to;
 }
+// A saved line keeps the prompt it was written to, even if the list changes later.
+const promptAt = pos => lines.has(pos) ? lines.get(pos).prompt : PROMPTS[pos];
+const inSet = (i, s = curSet()) => i >= s.from && i < s.to;
 
 function load(pos) {
-  settings.pos = pos; saveSettings();
+  settings.pos = pos; settings.posBySet[settings.set] = pos; saveSettings();
   const rec = lines.get(pos);
   strokes = rec ? rec.strokes.map(s => s.map(p => p.slice())) : [];
   curGap = rec ? rec.guide.gap : settings.gap;
@@ -838,26 +1061,33 @@ function load(pos) {
   sizeCanvas();
 }
 
+function setProgress(s) {
+  let done = 0;
+  for (const id of lines.keys()) if (inSet(id, s)) done++;
+  return done;
+}
+
 function render() {
-  const pos = settings.pos, finished = pos >= PROMPTS.length;
+  const s = curSet(), pos = settings.pos, finished = pos >= s.to;
+  const done = setProgress(s), size = s.to - s.from;
   document.body.classList.toggle('finished', finished);
-  $('count').textContent = lines.size;
-  $('total').textContent = '/ ' + PROMPTS.length;
-  $('meter').style.width = (100 * lines.size / PROMPTS.length) + '%';
+  $('count').textContent = done;
+  $('total').textContent = '/ ' + size;
+  $('meter').style.width = (100 * done / size) + '%';
   const unexported = [...lines.values()].filter(r => r.savedAt > settings.lastExport).length;
   $('badge').textContent = unexported || '';
+  const sk = settings.skipped.filter(i => inSet(i, s)).length;
   if (finished) {
-    const sk = settings.skipped.length;
-    $('eyebrow').textContent = 'Fertig';
-    $('promptText').textContent = 'Alle Sätze sind durch.';
-    $('doneText').textContent = `${lines.size} Zeilen geschrieben${sk ? `, ${sk} übersprungen` : ''}. ` +
-      'Tippe oben auf „Exportieren“ und schick die Datei an den PC.';
+    $('eyebrow').textContent = `${s.name} · fertig`;
+    $('promptText').textContent = 'Alle Sätze dieser Liste sind durch.';
+    $('doneText').textContent = `${done} Zeilen geschrieben${sk ? `, ${sk} übersprungen` : ''}. ` +
+      'Tippe oben auf „Exportieren“ und schick die Datei an den PC. Unter Einstellungen kannst du eine andere Satzliste wählen.';
     $('redoSkipped').style.display = sk ? '' : 'none';
   } else {
     const saved = lines.has(pos);
-    const parts = [`Zeile ${pos + 1}`, saved ? 'gespeichert' : 'schreib genau diesen Satz'];
+    const parts = [s.name, `Zeile ${pos - s.from + 1}`, saved ? 'gespeichert' : 'schreib genau diesen Satz'];
     $('eyebrow').innerHTML = parts.join(' · ') + (curText !== null ? ' · <span class="fix">Text angepasst</span>' : '');
-    $('promptText').textContent = curText !== null ? curText : PROMPTS[pos];
+    $('promptText').textContent = curText !== null ? curText : promptAt(pos);
     if (!strokes.length) showHint('Schreib auf die mittlere, hellere Linie.');
   }
   updateButtons();
@@ -868,7 +1098,7 @@ function updateButtons() {
   $('undoBtn').disabled = !has;
   $('clearBtn').disabled = !has;
   $('nextBtn').disabled = !has;
-  $('prevBtn').disabled = settings.pos === 0;
+  $('prevBtn').disabled = settings.pos <= curSet().from;
   $('gap').disabled = has;
   $('panelNote').textContent = has
     ? 'Erst die Zeile speichern oder löschen, dann lässt sich der Abstand ändern.'
@@ -884,8 +1114,8 @@ async function saveCurrent() {
   const first = strokes[0][0], lastS = strokes[strokes.length - 1], last = lastS[lastS.length - 1];
   const rec = {
     id: pos,
-    prompt: PROMPTS[pos],
-    text: curText !== null ? curText : PROMPTS[pos],
+    prompt: promptAt(pos),
+    text: curText !== null ? curText : promptAt(pos),
     strokes,
     guide: { gap: g.gap, topRule: g.top, baseline: g.base, bottomRule: g.bottom,
              width: Math.round(pad.clientWidth), height: g.height },
@@ -920,18 +1150,23 @@ $('skipBtn').onclick = () => {
   load(nextOpen(settings.pos + 1));
 };
 $('prevBtn').onclick = () => {
-  if (settings.pos === 0 || !confirmDiscard()) return;
-  load(Math.min(settings.pos, PROMPTS.length) - 1);
+  const s = curSet();
+  if (settings.pos <= s.from || !confirmDiscard()) return;
+  load(Math.min(settings.pos, s.to) - 1);
 };
 $('undoBtn').onclick = () => { strokes.pop(); dirty = true; if (!strokes.length) t0 = null; redraw(); render(); };
 $('clearBtn').onclick = () => { strokes = []; t0 = null; dirty = true; curGap = settings.gap; sizeCanvas(); render(); };
-$('redoSkipped').onclick = () => { settings.skipped = []; load(nextOpen(0)); };
+$('redoSkipped').onclick = () => {
+  const s = curSet();
+  settings.skipped = settings.skipped.filter(i => !inSet(i, s));
+  load(nextOpen(s.from));
+};
 $('editBtn').onclick = () => {
-  const now = curText !== null ? curText : PROMPTS[settings.pos];
+  const now = curText !== null ? curText : promptAt(settings.pos);
   const v = prompt('Was steht wirklich in deiner Zeile? (Wort für Wort, inklusive Fehler)', now);
   if (v === null) return;
   const t = v.trim();
-  curText = (!t || t === PROMPTS[settings.pos]) ? null : t;
+  curText = (!t || t === promptAt(settings.pos)) ? null : t;
   if (lines.has(settings.pos)) dirty = true;
   render();
 };
@@ -945,7 +1180,24 @@ $('gap').oninput = e => {
   $('gapOut').textContent = settings.gap + ' px';
   if (!strokes.length) { curGap = settings.gap; sizeCanvas(); }
 };
+function fillSets() {
+  $('setSel').innerHTML = '';
+  for (const s of PROMPT_SETS) {
+    const o = document.createElement('option');
+    o.value = s.id;
+    o.textContent = `${s.name} (${setProgress(s)}/${s.to - s.from})`;
+    o.selected = s.id === settings.set;
+    $('setSel').appendChild(o);
+  }
+}
+$('setSel').onchange = e => {
+  if (!confirmDiscard()) { fillSets(); return; }
+  settings.set = e.target.value;
+  const s = curSet(), back = settings.posBySet[s.id];
+  load(back !== undefined && inSet(back, s) ? back : nextOpen(s.from));
+};
 $('settingsBtn').onclick = () => {
+  fillSets();
   const p = $('panel'); p.hidden = !p.hidden;
   $('settingsBtn').setAttribute('aria-expanded', String(!p.hidden));
   sizeCanvas();
@@ -1005,7 +1257,7 @@ $('importFile').onchange = async e => {
       lines.set(rec.id, rec); n++;
     }
     toast(`${n} Zeilen eingelesen.`);
-    load(lines.has(settings.pos) ? settings.pos : nextOpen(0));
+    load(lines.has(settings.pos) ? settings.pos : nextOpen(curSet().from));
   } catch (err) {
     toast('Einlesen fehlgeschlagen: ' + err.message, true);
   }
@@ -1038,7 +1290,8 @@ window.addEventListener('beforeunload', e => { if (dirty && strokes.length) { e.
   } catch (err) {
     toast('Speicher nicht verfügbar: ' + (err && err.message || err) + '. Privater Modus?', true);
   }
-  load(Math.min(settings.pos, PROMPTS.length));
+  const s = curSet();   // e.g. after a new set was added, the old position lies outside the current set
+  load(inSet(settings.pos, s) ? settings.pos : nextOpen(s.from));
 })();
 </script>
 </body>
